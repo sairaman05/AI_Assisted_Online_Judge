@@ -2,16 +2,31 @@ const { spawn } = require('child_process');
 const path = require('path');
 const { performance } = require('perf_hooks');
 
+const outputPath = path.join(__dirname, 'outputs'); // for submit handler to save logs, not used here
+
+/**
+ * Executes a Python script with optional input sent to stdin.
+ * Enforces a timeout.
+ *
+ * @param {string} filepath - Absolute path to the Python script.
+ * @param {string} input - String input for stdin (default: '').
+ * @param {number} timeoutMs - Timeout in milliseconds (default: 5000).
+ * @returns {Promise<object>} Resolves with:
+ *  - { output, time, memory } on success
+ *  - { error, detail, time, memory } on failure or timeout
+ */
 const executePy = async (filepath, input = '', timeoutMs = 5000) => {
   return new Promise((resolve) => {
     const startTime = performance.now();
     let timedOut = false;
 
+    // Spawn Python process
     const pyProcess = spawn('python', [filepath]);
 
     let stdoutData = '';
     let stderrData = '';
 
+    // Setup timeout: forcibly kill process if it exceeds time limit
     const timeout = setTimeout(() => {
       timedOut = true;
       pyProcess.kill();
@@ -73,6 +88,12 @@ const executePy = async (filepath, input = '', timeoutMs = 5000) => {
   });
 };
 
+/**
+ * Parses stderr string to provide detailed user-friendly Python error messages.
+ *
+ * @param {string} stderrData
+ * @returns {string} Friendly error message
+ */
 function parsePythonError(stderrData) {
   if (!stderrData) return 'Unknown Python Error';
 

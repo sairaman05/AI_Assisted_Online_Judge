@@ -12,7 +12,7 @@ import EditorPanel from "../components/EditorPanel";
 import LeaderboardPage from "./Leaderboard";
 import ContestRegisterPage from "./ContestPage";
 import SubmissionsPage from "./SubmissionsPage";
-import { submitCode, runCode } from "../api/compiler";
+import { submit, run } from "../api/compiler";
 
 import {
   fetchAiAssistanceEnabled,
@@ -190,7 +190,7 @@ export default function CodeEditorPage() {
     const lang = langMap[language.toLowerCase()] || "py";
 
     try {
-      const response = await submitCode(lang, code, prob.id, userId, userContestId, userName, input);
+      const response = await submit(lang, code, prob.id, userId, userContestId, userName, input);
       setOutput(response.output || response.error || "Unknown error");
     } catch (error) {
       setOutput("Submission failed.");
@@ -207,10 +207,10 @@ export default function CodeEditorPage() {
     const langMap = { py: "py", python: "py", java: "java", cpp: "cpp", "c++": "cpp" };
     const lang = langMap[language.toLowerCase()] || "py";
     try {
-      const response = await runCode(lang, code, input);
+      const response = await run(lang, code, input);
       setOutput(response.output || response.error || "Unknown error");
     } catch (error) {
-      setOutput("Run failed."+(error.message || error.toString()));
+      setOutput("Run failed.");
       console.error(error);
     }
   };

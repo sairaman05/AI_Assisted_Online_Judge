@@ -23,12 +23,6 @@ if (!fsSync.existsSync(outputPath)) {
   fsSync.mkdirSync(outputPath, { recursive: true });
 }
 
-// Submissions source code save directory
-const submissionsDir = path.join(path.resolve(), "submissions");
-if (!fsSync.existsSync(submissionsDir)) {
-  fsSync.mkdirSync(submissionsDir, { recursive: true });
-}
-
 // Function to return executor based on language
 function getExecutor(format) {
   switch (format.toLowerCase()) {
@@ -45,9 +39,14 @@ function getExecutor(format) {
   }
 }
 
-// POST /submit endpoint: run all testcases and save output logs ONLY, no submission API call
+// POST /submit endpoint: run all testcases and save output logs
+const submissionsDir = path.join(path.resolve(), "submissions");
+if (!fsSync.existsSync(submissionsDir)) {
+  fsSync.mkdirSync(submissionsDir, { recursive: true });
+}
+
 compiler.post("/submit", async (req, res) => {
-  const { format, code, problemId, userId, contestId, userName, testcases } = req.body;
+  const { format, code, problemId, userId, contestId, userName } = req.body;
 
   if (!code) return res.status(400).json({ success: false, error: "Code not provided" });
   if (!problemId) return res.status(400).json({ success: false, error: "Problem ID not provided" });
@@ -56,11 +55,16 @@ compiler.post("/submit", async (req, res) => {
   const executor = getExecutor(format);
   if (!executor) return res.status(400).json({ success: false, error: `Unsupported language: ${format}` });
 
-  if (!testcases || !testcases.length) {
-    return res.status(400).json({ success: false, error: "No testcases found for the problem" });
-  }
-
   try {
+    // Fetch problem testcases
+    const problemRes = await axios.get(`http://localhost:5174/api/problems/${problemId}`);
+    const problem = problemRes.data;
+    const testcases = problem.testcases || [];
+
+    if (!testcases.length) {
+      return res.status(400).json({ success: false, error: "No testcases found for the problem" });
+    }
+
     // Generate unique temp source code file with generated uuid
     const { filepath, uuid } = await generateFile(format, code);
 
@@ -103,36 +107,52 @@ compiler.post("/submit", async (req, res) => {
         : "Runtime Error"
       : "Accepted";
 
-    // Since the compiler does not fetch the problem’s score here, you can send 0 or handle it upstream
-    const finalScore = finalResult === "Accepted" ? 0 : 0;
+    const finalScore = finalResult === "Accepted" ? (problem.score || 0) : 0;
 
     // Save output log **only for submissions**
     const outputFilePath = path.join(outputPath, `${uuid}.out`);
     const outputLog = hasError ? `${finalResult}\n\n${failOutput || ""}` : "All testcases passed!";
     await fs.writeFile(outputFilePath, outputLog);
 
-    // Save submitted source code file permanently
+    // === New code: Save submitted source code file permanently ===
     const savedSourcePath = path.join(submissionsDir, `${uuid}.${format}`);
+    // Copy (or move) the temp code file to the submissions folder for permanent record
     await fs.copyFile(filepath, savedSourcePath);
 
-    // Cleanup temporary source file (do not delete saved source file)
+    // Save submission record via your API
+    await axios.post("http://localhost:5174/api/submissions", {
+      problem: problemId,
+      user: userId,
+      contestId,
+      submissionId: uuid,
+      username: userName,
+      score: finalScore,
+      result: finalResult,
+      time: totalTime || null,
+      memory: null,
+      // Optionally: you can add `codeFilePath: savedSourcePath` or save code text here as well if your DB supports it
+    });
+
+    // Cleanup temporary source file (dont delete submission saved file!)
     try {
       await fs.unlink(filepath);
     } catch (cleanupErr) {
       console.error("Error deleting temp source file:", cleanupErr);
     }
 
-    // Respond with the result only; NO submission API call here
+    // Respond with result
     if (hasError) {
-      return res.json({ success: false, error: finalResult, detail: failOutput, uuid, totalTime, finalScore, finalResult });
+      return res.json({ success: false, error: finalResult, detail: failOutput });
     } else {
-      return res.json({ success: true, output: "All testcases passed!", uuid, totalTime, finalScore, finalResult });
+      return res.json({ success: true, output: "All testcases passed!", totalTime });
     }
+
   } catch (error) {
     console.error("Error in /submit:", error);
     return res.status(500).json({ success: false, error: "Internal server error", detail: error.message || "Unknown error" });
   }
 });
+
 
 // POST /run endpoint: run code once with optional input; no output file saved
 compiler.post("/run", async (req, res) => {
@@ -203,5 +223,3 @@ compiler.listen(5175, (error) => {
     console.log("✅ Server started on port 5175");
   }
 });
-
-export default compiler;

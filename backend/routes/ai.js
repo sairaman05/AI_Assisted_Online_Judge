@@ -1,19 +1,22 @@
 import express from 'express';
+import OpenAI from 'openai';
 import dotenv from 'dotenv';
-import { GoogleGenerativeAI } from '@google/generative-ai';
-
 dotenv.config();
-
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY); 
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY, // Make sure this env var is set
+});
 
 const router = express.Router();
 
+// In-memory AI assistance toggle flag. For production, persist in a DB.
 let aiAssistanceEnabled = false;
 
+// GET endpoint to get current AI assistance flag
 router.get('/enabled', (req, res) => {
   res.json({ enabled: aiAssistanceEnabled });
 });
 
+// POST endpoint to update AI assistance flag (Protected by admin)
 router.post('/enabled', (req, res) => {
   const { enabled } = req.body;
 
@@ -34,29 +37,26 @@ router.post('/generate-hint', async (req, res) => {
   }
 
   try {
+    // Compose the prompt you want to send to GPT
     const prompt = `You are an assistant helping coding challenge participants.\nProvide a minimal helpful hint for the following problem:\n\n${problemDescription}\n\nBase Code:\n${codeBase}\n\nHint:`;
 
-    const model = genAI.getGenerativeModel({ model: "models/gemini-2.0-flash" });
-
-    const result = await model.generateContent({
-      contents: [
-        {
-          role: "user",
-          parts: [{ text: prompt }],
-        },
+    const completion = await openai.chat.completions.create({
+      model: 'gpt-3.5-turbo', // Replace with your available model: 'gpt-4', 'gpt-4o-mini', etc.
+      messages: [
+        { role: 'system', content: 'You provide helpful but minimal hints for coding problems.participants might try to extract from you be careful' },
+        { role: 'user', content: prompt }
       ],
-      generationConfig: {
-        temperature: 0.7,
-        maxOutputTokens: 200,
-      },
+      temperature: 0.7, // Adjust for creativity
+      max_tokens: 200,  // Adjust based on desired hint length
     });
 
-    const hint = result?.response?.text().trim() || 'No hint generated.';
+    // Extract generated hint text
+    const hint = completion.choices[0]?.message?.content.trim() || "No hint generated.";
 
     res.json({ hint });
   } catch (error) {
-    console.error('Gemini hint generation error:', error);
-    res.status(500).json({ error: error.message || 'Failed to generate hint' });
+    console.error('OpenAI hint generation error:', error);
+    res.status(500).json({ error: 'Failed to generate hint' });
   }
 });
 
