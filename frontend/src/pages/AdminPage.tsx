@@ -1,7 +1,9 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useContext } from "react";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 import { setAiAssistanceEnabled, fetchAiAssistanceEnabled } from "../api/aiService";
+import { AuthContext } from "../api/authuser";
+import { useNavigate} from "react-router-dom";
 import {
   addUser,
   readUsers,
@@ -33,9 +35,12 @@ export default function AdminPage() {
   const [error, setError] = useState("");
   const [view, setView] = useState("users");
   const [selectedContestId, setSelectedContestId] = useState("practice");
+  const auth = useContext(AuthContext);
+  console.log(auth.type);
 
   const [aiAssistanceEnabled, setAiAssistanceEnabledState] = useState(false);
   const [aiToggleLoading, setAiToggleLoading] = useState(false);
+  const navigate = useNavigate();
 
   // Fetch AI toggle status from backend on mount
   useEffect(() => {
@@ -95,6 +100,8 @@ export default function AdminPage() {
     name: "",
     start: null,
     end: null,
+    password: "",
+    duration: 0,
   });
   const [editContestId, setEditContestId] = useState(null);
 
@@ -167,7 +174,7 @@ export default function AdminPage() {
   const handleProblemSave = async () => {
     const { title, description, score, codeBase, testcases, constraintLimit } = newProblem;
 
-    if (!title.trim() || !description.trim() || !score || !codeBase.trim() || !constraintLimit) {
+    if (!title.trim() || !description.trim() || !score) {
       setError("Fill all problem and testcase fields.");
       return;
     }
@@ -230,7 +237,7 @@ export default function AdminPage() {
 
   // -------- Contest Handlers --------
   const handleContestSave = async () => {
-    const { name, start, end } = newContest;
+    const { name, start, end, password, duration } = newContest;
 
     if (!name.trim() || !start || !end) {
       setError("Fill all contest fields.");
@@ -241,14 +248,14 @@ export default function AdminPage() {
       setError("Start date/time must be before end date/time.");
       return;
     }
-
     const contestToSave = {
       ...newContest,
       start: start.toISOString(),
       end: end.toISOString(),
       problems: newContest.problems || [],
+      password: password,
+      duration: duration,
     };
-
     try {
       if (editContestId) {
         await updateContest(editContestId, contestToSave);
@@ -256,7 +263,7 @@ export default function AdminPage() {
         const newId = uuidv4();
         await addContest({ ...contestToSave, id: newId });
       }
-      setNewContest({ id: "", name: "", start: null, end: null });
+      setNewContest({ id: "", name: "", start: null, end: null, password: "", duration: 0 });
       setEditContestId(null);
       await fetchData();
       setError("");
@@ -272,6 +279,8 @@ export default function AdminPage() {
       start: contest.start ? new Date(contest.start) : null,
       end: contest.end ? new Date(contest.end) : null,
       problems: contest.problems || [],
+      password: contest.password || "",
+      duration: contest.duration || 0,
     });
     setEditContestId(contest.id || contest._id);
   };
@@ -436,6 +445,31 @@ export default function AdminPage() {
     <section>
       <h2 className="text-2xl font-semibold mb-4 text-white">📘 Manage Problems</h2>
 
+      {/* 👇 ADD THIS BUTTON */}
+      <div className="mb-8 p-4 bg-gradient-to-r from-indigo-600/20 to-purple-600/20 border-2 border-indigo-500/50 rounded-2xl backdrop-blur-sm">
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="flex items-center space-x-3">
+            <div className="w-12 h-12 bg-indigo-500/80 rounded-2xl flex items-center justify-center shadow-lg">
+              <span className="text-white font-bold text-2xl">🧪</span>
+            </div>
+            <div>
+              <h3 className="text-xl font-bold text-indigo-300">Admin Test Mode</h3>
+              <p className="text-indigo-200 text-sm">Test ALL {problems.length} problems → No contest restrictions</p>
+            </div>
+          </div>
+          <button
+            onClick={() => {
+              console.log("🚀 Navigating to editor...");
+              navigate(`/editor?isAdminTest=true`);
+            }}
+            className="bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white px-8 py-4 rounded-xl font-bold text-lg shadow-2xl hover:shadow-3xl hover:scale-105 transition-all duration-300 flex items-center space-x-3"
+          >
+            <span>🚀 Open Code Editor</span>
+            <span className="text-sm font-normal">(Admin Mode)</span>
+          </button>
+        </div>
+      </div>
+
       {/* Contest selector for filtering */}
       <div className="mb-4">
         <label className="mr-2 text-white font-semibold">Filter Problems by Contest:</label>
@@ -455,26 +489,76 @@ export default function AdminPage() {
 
       {/* Problem input fields */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-6">
-        <input
-          className="p-2 bg-zinc-900 text-white rounded"
-          placeholder="Title"
-          value={newProblem.title}
-          onChange={(e) => setNewProblem({ ...newProblem, title: e.target.value })}
-        />
-        <input
-          className="p-2 bg-zinc-900 text-white rounded"
-          placeholder="Description"
-          value={newProblem.description}
-          onChange={(e) => setNewProblem({ ...newProblem, description: e.target.value })}
-        />
-        <input
-          type="number"
-          className="p-2 bg-zinc-900 text-white rounded"
-          placeholder="Score"
-          value={newProblem.score}
-          onChange={(e) => setNewProblem({ ...newProblem, score: Number(e.target.value) })}
-        />
+        {/* Title */}
+        <div className="flex flex-col">
+          <label htmlFor="title" className="mb-1 text-white font-semibold select-none">
+            Title
+          </label>
+          <input
+            id="title"
+            type="text"
+            className="p-2 bg-zinc-900 text-white rounded placeholder-gray-400"
+            placeholder="Enter problem title"
+            value={newProblem.title}
+            onChange={(e) => setNewProblem({ ...newProblem, title: e.target.value })}
+          />
+        </div>
 
+        {/* Description */}
+        <div className="flex flex-col md:col-span-2">
+          <label htmlFor="description" className="mb-1 text-white font-semibold select-none">
+            Description
+          </label>
+          <textarea
+            id="description"
+            rows={1}
+            className="p-2 bg-zinc-900 text-white rounded resize-y placeholder-gray-400 w-full"
+            placeholder="Enter problem description"
+            value={newProblem.description}
+            onChange={(e) => {
+              // Update state
+              setNewProblem({ ...newProblem, description: e.target.value });
+            }}
+            onInput={(e) => {
+              // Auto-expand vertically
+              e.target.style.height = "auto";
+              e.target.style.height = e.target.scrollHeight + "px";
+            }}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault();
+                const { selectionStart, selectionEnd, value } = e.target;
+                const newVal = value.slice(0, selectionStart) + "\n" + value.slice(selectionEnd);
+                setNewProblem({ ...newProblem, description: newVal });
+                setTimeout(() => {
+                  e.target.selectionStart = e.target.selectionEnd = selectionStart + 1;
+                });
+              }
+            }}
+          />
+        </div>
+
+        {/* Score */}
+        <div className="flex flex-col col-span-1 md:col-span-1">
+          <label htmlFor="score" className="mb-1 text-white font-semibold select-none">
+            Score
+          </label>
+          <input
+            id="score"
+            type="number"
+            className="p-2 bg-zinc-900 text-white rounded placeholder-gray-400 text-lg font-medium focus:outline-none focus:ring-2 focus:ring-blue-500"
+            placeholder="Enter problem score"
+            value={newProblem.score}
+            onChange={e => setNewProblem({ ...newProblem, score: Number(e.target.value) })}
+            onWheel={e => e.currentTarget.blur()} // prevent scroll wheel change
+            min={0}
+          />
+          <small className="text-gray-400 mt-1">Points awarded for solving this problem</small>
+        </div>
+
+
+
+        {/* Code Base File Upload */}
         <div className="col-span-1 md:col-span-3">
           <label className="block mb-1 text-white">Code Base File:</label>
           <input
@@ -484,14 +568,8 @@ export default function AdminPage() {
             onChange={async (e) => {
               const file = e.target.files[0];
               if (!file) return;
-              const reader = new window.FileReader();
-              reader.onload = (ev) => {
-                setNewProblem((prev) => ({ ...prev, codeBase: ev.target.result || "" }));
-              };
-              reader.onerror = () => {
-                setError("Failed to read file.");
-              };
-              reader.readAsText(file);
+              const text = await file.text();
+              setNewProblem((prev) => ({ ...prev, codeBase: text }));
             }}
           />
           {newProblem.codeBase && (
@@ -505,27 +583,44 @@ export default function AdminPage() {
         <div className="col-span-1 md:col-span-3">
           <label className="block mb-2 font-semibold text-white">Testcases:</label>
           {newProblem.testcases.map((tc, idx) => (
-            <div key={idx} className="flex gap-2 mb-2">
-              <input
-                className="p-2 bg-zinc-900 text-white rounded flex-1"
+            <div key={idx} className="flex flex-col md:flex-row gap-2 mb-2">
+              {/* Input textarea */}
+              <textarea
+                rows={1}
+                className="p-2 bg-zinc-900 text-white rounded flex-1 resize-none"
                 placeholder={`Input ${idx + 1}`}
                 value={tc.input}
-                onChange={(e) => {
+                onKeyDown={(e) => {
+                  e.stopPropagation();
+                }}
+                onInput={(e) => {
+                  e.target.style.height = "auto";
+                  e.target.style.height = e.target.scrollHeight + "px";
+
                   const testcases = [...newProblem.testcases];
                   testcases[idx].input = e.target.value;
                   setNewProblem({ ...newProblem, testcases });
                 }}
               />
-              <input
-                className="p-2 bg-zinc-900 text-white rounded flex-1"
+
+              {/* Output textarea */}
+              <textarea
+                rows={1}
+                className="p-2 bg-zinc-900 text-white rounded flex-1 resize-none"
                 placeholder={`Output ${idx + 1}`}
                 value={tc.output}
-                onChange={(e) => {
+                onKeyDown={(e) => e.stopPropagation()}
+                onInput={(e) => {
+                  e.target.style.height = "auto";
+                  e.target.style.height = e.target.scrollHeight + "px";
+
                   const testcases = [...newProblem.testcases];
                   testcases[idx].output = e.target.value;
                   setNewProblem({ ...newProblem, testcases });
                 }}
               />
+
+              {/* Remove testcase button */}
               <button
                 type="button"
                 onClick={() => {
@@ -535,7 +630,7 @@ export default function AdminPage() {
                     testcases: testcases.length ? testcases : [{ input: "", output: "" }],
                   });
                 }}
-                className="bg-red-600 hover:bg-red-700 px-2 py-1 rounded"
+                className="bg-red-600 hover:bg-red-700 px-2 py-1 rounded self-start"
                 disabled={newProblem.testcases.length === 1}
                 title="Remove this testcase"
               >
@@ -543,9 +638,11 @@ export default function AdminPage() {
               </button>
             </div>
           ))}
+
+          {/* Add Testcase button */}
           <button
             type="button"
-            className="bg-green-600 hover:bg-green-700 px-4 py-2 rounded text-white"
+            className="bg-green-600 hover:bg-green-700 px-4 py-2 rounded text-white mt-2"
             onClick={() =>
               setNewProblem({
                 ...newProblem,
@@ -557,14 +654,28 @@ export default function AdminPage() {
           </button>
         </div>
 
-        <input
-          type="number"
-          className="p-2 bg-zinc-900 text-white rounded"
-          placeholder="Constraint Limit"
-          value={newProblem.constraintLimit}
-          onChange={(e) => setNewProblem({ ...newProblem, constraintLimit: Number(e.target.value) })}
-        />
+        {/* Constraint Limit */}
+        <div className="flex flex-col col-span-1 md:col-span-1">
+          <label htmlFor="constraintLimit" className="mb-1 text-white font-semibold select-none">
+            Constraint Limit
+          </label>
+          <input
+            id="constraintLimit"
+            type="number"
+            className="p-2 bg-zinc-900 text-white rounded placeholder-gray-400 text-lg font-medium focus:outline-none focus:ring-2 focus:ring-blue-500"
+            placeholder="Enter constraint limit"
+            value={newProblem.constraintLimit}
+            onChange={e => setNewProblem({ ...newProblem, constraintLimit: Number(e.target.value) })}
+            onWheel={e => e.currentTarget.blur()}  // prevent scroll wheel changing value
+            min={0}
+          />
+          <small className="text-gray-400 mt-1">
+            Minimum allowed similarity in percentage
+          </small>
+        </div>
 
+
+        {/* Save Problem button */}
         <button
           onClick={handleProblemSave}
           className="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded text-white col-span-1 md:col-span-3"
@@ -572,6 +683,7 @@ export default function AdminPage() {
           {editProblemId ? "Update Problem" : "Add Problem"}
         </button>
       </div>
+
 
       {/* Assign Problems to Contests Section */}
       <section className="mb-8">
@@ -622,9 +734,9 @@ export default function AdminPage() {
                 }
                 onClick={() => handleAssignProblemToContests(problem.id)}
                 className={`ml-0 md:ml-4 mt-3 md:mt-0 bg-green-600 hover:bg-green-700 px-4 py-2 rounded text-white ${!problemContestSelections[problem.id] ||
-                    problemContestSelections[problem.id].size === 0
-                    ? "opacity-50 cursor-not-allowed"
-                    : ""
+                  problemContestSelections[problem.id].size === 0
+                  ? "opacity-50 cursor-not-allowed"
+                  : ""
                   }`}
               >
                 Assign Selected Contests
@@ -709,6 +821,32 @@ export default function AdminPage() {
             placeholderText="Select end date & time"
           />
         </div>
+        <div>
+          <label className="block mb-1 text-white font-semibold">Duration (minutes)</label>
+          <input
+            type="number"
+            min={0}
+            value={newContest.duration}
+            onChange={(e) =>
+              setNewContest((prev) => ({ ...prev, duration: Number(e.target.value) }))
+            }
+            className="p-2 bg-zinc-900 text-white rounded w-full"
+            placeholder="Enter contest duration"
+          />
+        </div>
+        <div>
+          <label className="block mb-1 text-white font-semibold">Contest Password</label>
+          <input
+            type="password"
+            value={newContest.password}
+            onChange={(e) =>
+              setNewContest((prev) => ({ ...prev, password: e.target.value }))
+            }
+            placeholder="Enter contest password"
+            className="p-2 bg-zinc-900 text-white rounded w-full"
+          />
+        </div>
+
 
         <div></div>
 
