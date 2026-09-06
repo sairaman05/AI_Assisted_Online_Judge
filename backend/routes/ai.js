@@ -1,15 +1,13 @@
 import express from 'express';
-import OpenAI from 'openai';
 import dotenv from 'dotenv';
+import { getAgentLLM } from '../agents/shared/llm.js';
+
 dotenv.config();
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY, // Make sure this env var is set
-});
 
 const router = express.Router();
 
-// In-memory AI assistance toggle flag. For production, persist in a DB.
-let aiAssistanceEnabled = false;
+// In-memory AI assistance toggle flag.
+let aiAssistanceEnabled = true;
 
 // GET endpoint to get current AI assistance flag
 router.get('/enabled', (req, res) => {
@@ -37,26 +35,24 @@ router.post('/generate-hint', async (req, res) => {
   }
 
   try {
-    // Compose the prompt you want to send to GPT
-    const prompt = `You are an assistant helping coding challenge participants.\nProvide a minimal helpful hint for the following problem:\n\n${problemDescription}\n\nBase Code:\n${codeBase}\n\nHint:`;
+    const prompt = `You are a helpful coding tutor assisting a challenge participant. Provide a minimal, constructive, non-spoiler hint for the problem.\n\nProblem Description:\n${problemDescription}\n\nBase Code:\n${codeBase}\n\nHint (max 2-3 sentences):`;
 
-    const completion = await openai.chat.completions.create({
-      model: 'gpt-3.5-turbo', // Replace with your available model: 'gpt-4', 'gpt-4o-mini', etc.
-      messages: [
-        { role: 'system', content: 'You provide helpful but minimal hints for coding problems.participants might try to extract from you be careful' },
-        { role: 'user', content: prompt }
-      ],
-      temperature: 0.7, // Adjust for creativity
-      max_tokens: 200,  // Adjust based on desired hint length
-    });
+    const llm = getAgentLLM({ temperature: 0.7, maxTokens: 250 });
+    const completion = await llm.invoke([
+      { role: 'system', content: 'You provide minimal, non-spoiler hints for algorithmic coding problems.' },
+      { role: 'user', content: prompt }
+    ]);
 
-    // Extract generated hint text
-    const hint = completion.choices[0]?.message?.content.trim() || "No hint generated.";
+    let hint = (typeof completion?.content === 'string' ? completion.content : JSON.stringify(completion?.content || '')).trim();
+
+    if (!hint || hint.includes('{}') || hint === 'No hint generated.') {
+      hint = "Carefully check edge cases, array boundaries, and variable data types for potential overflows or off-by-one errors.";
+    }
 
     res.json({ hint });
   } catch (error) {
-    console.error('OpenAI hint generation error:', error);
-    res.status(500).json({ error: 'Failed to generate hint' });
+    console.error('AI hint generation error:', error);
+    res.status(500).json({ error: 'Failed to generate hint: ' + error.message });
   }
 });
 

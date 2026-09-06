@@ -1,9 +1,9 @@
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { readSubmissions } from "../api/submissions";
 import {
   calculateLeaderboard,
-  LeaderboardEntry,
-  Contest,
+  type LeaderboardEntry,
+  type Contest,
 } from "../api/leaderboard";
 
 interface LeaderboardPageProps {

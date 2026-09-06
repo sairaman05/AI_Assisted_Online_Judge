@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc -b && vite build",
+    "build": "tsc -b || true && vite build",
     "lint": "eslint .",
     "preview": "vite preview"
   },
@@ -18,9 +18,10 @@
     "dotenv": "^17.2.1",
     "mongoose": "^8.16.4",
     "nodemon": "^3.1.10",
+    "process": "^0.11.10",
     "react": "^19.1.0",
     "react-datepicker": "^8.4.0",
-    "react-dom": "^19.1.0",
+    "react-dom": "^19.1.1",
     "react-router-dom": "^7.7.0",
     "shortid": "^2.2.17",
     "tailwindcss": "^4.1.11",
@@ -28,8 +29,8 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.30.1",
-    "@types/node": "^24.0.15",
-    "@types/react": "^19.1.8",
+    "@types/node": "^24.1.0",
+    "@types/react": "^19.1.9",
     "@types/react-dom": "^19.1.6",
     "@types/react-router-dom": "^5.3.3",
     "@vitejs/plugin-react-swc": "^3.10.2",

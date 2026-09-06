@@ -1,18 +1,18 @@
-const API_BASE = "http://localhost:5174/api/problems";
+
+const API_BASE = `${import.meta.env.VITE_BACKEND_IP}/api/problems`;
 
 //Create a new problem
 export function addProblem(problemData) {
     return fetch(API_BASE, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify(problemData),
     })
-        .then((res) => {
-            if (!res.ok) throw new Error("Failed to add problem");
-            return res.json();
-        })
-        .catch((err) => {
-            console.error("Error adding problem:", err);
+        .then(async (res) => {
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok) throw new Error(data.error || `Failed to add problem (${res.status})`);
+            return data;
         });
 }
 
@@ -48,12 +48,10 @@ export function updateProblem(problemId, updatedData) {
         credentials: "include",
         body: JSON.stringify(updatedData),
     })
-        .then((res) => {
-            if (!res.ok) throw new Error("Failed to update problem");
-            return res.json();
-        })
-        .catch((err) => {
-            console.error("Error updating problem:", err);
+        .then(async (res) => {
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok) throw new Error(data.error || `Failed to update problem (${res.status})`);
+            return data;
         });
 }
 

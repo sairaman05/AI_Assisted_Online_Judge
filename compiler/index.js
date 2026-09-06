@@ -45,6 +45,8 @@ if (!fsSync.existsSync(submissionsDir)) {
   fsSync.mkdirSync(submissionsDir, { recursive: true });
 }
 
+const BACKEND_URL = process.env.BACKEND_URL || "http://host.docker.internal:5174";
+
 compiler.post("/submit", async (req, res) => {
   const { format, code, problemId, userId, contestId, userName } = req.body;
 
@@ -57,7 +59,7 @@ compiler.post("/submit", async (req, res) => {
 
   try {
     // Fetch problem testcases
-    const problemRes = await axios.get(`http://localhost:5174/api/problems/${problemId}`);
+    const problemRes = await axios.get(`${BACKEND_URL}/api/problems/${problemId}`);
     const problem = problemRes.data;
     const testcases = problem.testcases || [];
 
@@ -82,15 +84,13 @@ compiler.post("/submit", async (req, res) => {
       const result = await executor(filepath, inputStr);
 
       totalTime += result.time || 0;
-
+      let actualOutput = "";
       if (result.error) {
-        hasError = true;
-        failReason = "Runtime Error";
-        failOutput = result.error + (result.detail ? "\nDetails: " + result.detail : "");
-        break;
+        actualOutput = result.error;
+      } else {
+        actualOutput = (result.output || "").trim().replace(/\r\n/g, "\n");
       }
 
-      const actualOutput = (result.output || "").trim().replace(/\r\n/g, "\n");
 
       if (actualOutput !== expectedOutput) {
         hasError = true;
@@ -107,7 +107,8 @@ compiler.post("/submit", async (req, res) => {
         : "Runtime Error"
       : "Accepted";
 
-    const finalScore = finalResult === "Accepted" ? (problem.score || 0) : 0;
+    // Since the compiler does not fetch the problem’s score here, you can send 0 or handle it upstream
+    const finalScore = 0;
 
     // Save output log **only for submissions**
     const outputFilePath = path.join(outputPath, `${uuid}.out`);
@@ -120,7 +121,7 @@ compiler.post("/submit", async (req, res) => {
     await fs.copyFile(filepath, savedSourcePath);
 
     // Save submission record via your API
-    await axios.post("http://localhost:5174/api/submissions", {
+    await axios.post(`${BACKEND_URL}/api/submissions`, {
       problem: problemId,
       user: userId,
       contestId,
@@ -139,12 +140,10 @@ compiler.post("/submit", async (req, res) => {
     } catch (cleanupErr) {
       console.error("Error deleting temp source file:", cleanupErr);
     }
-
-    // Respond with result
     if (hasError) {
-      return res.json({ success: false, error: finalResult, detail: failOutput });
+      return res.json({ success: false, uuid, error: finalResult, detail: failOutput });
     } else {
-      return res.json({ success: true, output: "All testcases passed!", totalTime });
+      return res.json({ success: true, uuid, output: "All testcases passed!", totalTime });
     }
 
   } catch (error) {

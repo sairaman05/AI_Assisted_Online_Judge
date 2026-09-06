@@ -1,12 +1,15 @@
-// Submit a solution with optional problemId, userId, and input for test case inputs
-export function submit(lang, code, problemId, userId, contestId, userName, input = '') {
-  //console.log(lang, code, problemId, userId, contestId, userName, input);
-  return fetch("http://localhost:5175/submit", {
+const COMPILER_API_BASE = `${import.meta.env.VITE_BACKEND_IP || 'http://localhost:5174'}/api/compiler`;
+
+// Submit code for evaluation (submission)
+export async function submitCode( lang, code, problemId, userId, contestId, userName, input = "" ) {
+  console.log(lang, code, problemId, userId, contestId, userName, input);
+  return fetch(`${COMPILER_API_BASE}/submit`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
+      lang: lang,
       format: lang,
       code: code,
       problemId: problemId,  // required: send problem id
@@ -23,14 +26,15 @@ export function submit(lang, code, problemId, userId, contestId, userName, input
     });
 }
 
-// Run code with optional input (for code execution without submission)
-export function run(lang, code, input = '') {
-  return fetch("http://localhost:5175/run", {
+// Run code without submission (for instant feedback or code execution)
+export async function runCode( lang, code, input = "" ) {
+  return fetch(`${COMPILER_API_BASE}/run`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
+      lang: lang,
       format: lang,
       code: code,
       input: input,          // optional input string for the code running

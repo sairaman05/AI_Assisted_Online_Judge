@@ -26,6 +26,15 @@ import {
   addProblemToContest,
 } from "../api/contests";
 
+import {
+  analyzeContest,
+  getContestRecommendations,
+  approveRecommendation,
+  rejectRecommendation,
+  getAgentAuditLogs,
+  getAgentSessions,
+} from "../api/agents";
+
 import { v4 as uuidv4 } from "uuid";
 
 export default function AdminPage() {
@@ -108,9 +117,33 @@ export default function AdminPage() {
   // Multi-selection for assigning problems to contests
   const [problemContestSelections, setProblemContestSelections] = useState({});
 
+  // Agent Control Center state
+  const [recommendations, setRecommendations] = useState<any[]>([]);
+  const [auditLogs, setAuditLogs] = useState<any[]>([]);
+  const [agentSessions, setAgentSessions] = useState<any[]>([]);
+  const [analyzingContest, setAnalyzingContest] = useState(false);
+  const [analysisResult, setAnalysisResult] = useState<any>(null);
+  const [analysisContestId, setAnalysisContestId] = useState("");
+  const [adminActionLoading, setAdminActionLoading] = useState(false);
+
   useEffect(() => {
     fetchData();
   }, []);
+
+  const fetchAgentData = async () => {
+    try {
+      const [recs, logs, sessions] = await Promise.all([
+        getContestRecommendations("all").catch(() => []),
+        getAgentAuditLogs(30).catch(() => []),
+        getAgentSessions(20).catch(() => []),
+      ]);
+      setRecommendations(recs || []);
+      setAuditLogs(logs || []);
+      setAgentSessions(sessions || []);
+    } catch (err) {
+      console.error("Failed to load agent data", err);
+    }
+  };
 
   const fetchData = async () => {
     try {
@@ -128,6 +161,10 @@ export default function AdminPage() {
       setUsers(usersData || []);
       setProblems(problemsData || []);
       setContests(contestsWithProblems);
+      if (contestsWithProblems.length > 0 && !analysisContestId) {
+        setAnalysisContestId(contestsWithProblems[0].id || contestsWithProblems[0]._id);
+      }
+      await fetchAgentData();
       setError("");
     } catch {
       setError("Failed to load data");
@@ -556,8 +593,6 @@ export default function AdminPage() {
           <small className="text-gray-400 mt-1">Points awarded for solving this problem</small>
         </div>
 
-
-
         {/* Code Base File Upload */}
         <div className="col-span-1 md:col-span-3">
           <label className="block mb-1 text-white">Code Base File:</label>
@@ -584,7 +619,6 @@ export default function AdminPage() {
           <label className="block mb-2 font-semibold text-white">Testcases:</label>
           {newProblem.testcases.map((tc, idx) => (
             <div key={idx} className="flex flex-col md:flex-row gap-2 mb-2">
-              {/* Input textarea */}
               <textarea
                 rows={1}
                 className="p-2 bg-zinc-900 text-white rounded flex-1 resize-none"
@@ -603,7 +637,6 @@ export default function AdminPage() {
                 }}
               />
 
-              {/* Output textarea */}
               <textarea
                 rows={1}
                 className="p-2 bg-zinc-900 text-white rounded flex-1 resize-none"
@@ -620,7 +653,6 @@ export default function AdminPage() {
                 }}
               />
 
-              {/* Remove testcase button */}
               <button
                 type="button"
                 onClick={() => {
@@ -639,7 +671,6 @@ export default function AdminPage() {
             </div>
           ))}
 
-          {/* Add Testcase button */}
           <button
             type="button"
             className="bg-green-600 hover:bg-green-700 px-4 py-2 rounded text-white mt-2"
@@ -666,14 +697,13 @@ export default function AdminPage() {
             placeholder="Enter constraint limit"
             value={newProblem.constraintLimit}
             onChange={e => setNewProblem({ ...newProblem, constraintLimit: Number(e.target.value) })}
-            onWheel={e => e.currentTarget.blur()}  // prevent scroll wheel changing value
+            onWheel={e => e.currentTarget.blur()}
             min={0}
           />
           <small className="text-gray-400 mt-1">
             Minimum allowed similarity in percentage
           </small>
         </div>
-
 
         {/* Save Problem button */}
         <button
@@ -683,7 +713,6 @@ export default function AdminPage() {
           {editProblemId ? "Update Problem" : "Add Problem"}
         </button>
       </div>
-
 
       {/* Assign Problems to Contests Section */}
       <section className="mb-8">
@@ -847,9 +876,6 @@ export default function AdminPage() {
           />
         </div>
 
-
-        <div></div>
-
         <button
           onClick={handleContestSave}
           className="bg-green-600 hover:bg-green-700 px-4 py-2 rounded text-white"
@@ -918,6 +944,304 @@ export default function AdminPage() {
     </section>
   );
 
+  // -------- Agent Control Center Handlers --------
+  const handleRunContestAnalysis = async () => {
+    if (!analysisContestId) {
+      setError("Please select a contest to analyze.");
+      return;
+    }
+    setAnalyzingContest(true);
+    setError("");
+    try {
+      const res = await analyzeContest(analysisContestId);
+      setAnalysisResult(res?.result || res);
+      await fetchAgentData();
+    } catch (err: any) {
+      setError(err.message || "Failed to execute Contest Master analysis.");
+    } finally {
+      setAnalyzingContest(false);
+    }
+  };
+
+  const handleApprove = async (recId: string) => {
+    setAdminActionLoading(true);
+    try {
+      await approveRecommendation(recId, "Approved via AI Agent Control Center");
+      await fetchAgentData();
+    } catch (err: any) {
+      setError(err.message || "Failed to approve recommendation");
+    } finally {
+      setAdminActionLoading(false);
+    }
+  };
+
+  const handleReject = async (recId: string) => {
+    setAdminActionLoading(true);
+    try {
+      await rejectRecommendation(recId, "Dismissed by Admin");
+      await fetchAgentData();
+    } catch (err: any) {
+      setError(err.message || "Failed to reject recommendation");
+    } finally {
+      setAdminActionLoading(false);
+    }
+  };
+
+  const renderAgentControlCenter = () => (
+    <div className="space-y-10">
+      {/* 1. AI Contest Master Monitor */}
+      <section className="bg-zinc-900 border border-zinc-800 rounded-2xl p-6 shadow-xl space-y-6">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-zinc-800 pb-4">
+          <div>
+            <h2 className="text-2xl font-bold text-indigo-400 flex items-center gap-2">
+              <span>🤖</span> AI Contest Master Agent
+            </h2>
+            <p className="text-xs text-gray-400">
+              Autonomous contest telemetry monitoring, anomaly detection, and difficulty balancing.
+            </p>
+          </div>
+
+          <div className="flex items-center gap-3">
+            <select
+              value={analysisContestId}
+              onChange={(e) => setAnalysisContestId(e.target.value)}
+              className="p-2.5 bg-zinc-800 border border-zinc-700 rounded text-white text-sm focus:outline-none focus:border-indigo-500"
+            >
+              <option value="">Select Contest...</option>
+              {contests.map((c: any) => (
+                <option key={c.id || c._id} value={c.id || c._id}>
+                  {c.name}
+                </option>
+              ))}
+            </select>
+
+            <button
+              onClick={handleRunContestAnalysis}
+              disabled={analyzingContest || !analysisContestId}
+              className="px-5 py-2.5 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 rounded-lg text-white font-bold text-sm transition shadow disabled:opacity-50 flex items-center gap-2 cursor-pointer"
+            >
+              {analyzingContest ? (
+                <>
+                  <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                  Analyzing...
+                </>
+              ) : (
+                <>🚀 Run Contest Analysis</>
+              )}
+            </button>
+          </div>
+        </div>
+
+        {/* Live Contest Health Card if available */}
+        {analysisResult && (
+          <div className="bg-zinc-950 border border-indigo-500/30 rounded-xl p-5 space-y-4">
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-bold text-gray-300">Contest Health Status:</span>
+              <span className={`px-3 py-1 rounded text-xs font-bold uppercase tracking-wider ${
+                analysisResult.contestHealth === 'healthy'
+                  ? 'bg-green-500/20 text-green-400 border border-green-500/40'
+                  : analysisResult.contestHealth === 'attention_required'
+                  ? 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/40'
+                  : 'bg-red-500/20 text-red-400 border border-red-500/40'
+              }`}>
+                {analysisResult.contestHealth === 'healthy' ? '🟢 Healthy' : analysisResult.contestHealth === 'attention_required' ? '⚠️ Attention Required' : '🔴 Critical Anomaly'}
+              </span>
+            </div>
+
+            {analysisResult.anomalies && analysisResult.anomalies.length > 0 ? (
+              <div className="space-y-3">
+                <h4 className="text-xs font-bold text-indigo-300 uppercase tracking-wider">Detected Anomaly Patterns:</h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  {analysisResult.anomalies.map((an: any, idx: number) => (
+                    <div key={idx} className="bg-zinc-900 border border-zinc-800 rounded-lg p-3 text-xs space-y-1">
+                      <div className="flex items-center justify-between">
+                        <span className="font-bold text-white">{an.type}</span>
+                        <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${
+                          an.severity === 'high' || an.severity === 'critical' ? 'bg-red-500/20 text-red-300' : 'bg-yellow-500/20 text-yellow-300'
+                        }`}>
+                          {an.severity}
+                        </span>
+                      </div>
+                      <p className="text-gray-300">{an.reasoning}</p>
+                      <p className="text-indigo-300 font-semibold mt-1">Proposal: {an.recommendation}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <p className="text-sm text-green-300">✅ All problem solve rates and submission failure distributions are within normal parameters.</p>
+            )}
+          </div>
+        )}
+      </section>
+
+      {/* 2. Pending Human-in-the-Loop AI Recommendations */}
+      <section className="bg-zinc-900 border border-zinc-800 rounded-2xl p-6 shadow-xl space-y-4">
+        <h2 className="text-2xl font-bold text-white flex items-center gap-2">
+          <span>⚖️</span> Pending AI Recommendations (Human-in-the-Loop)
+        </h2>
+        <p className="text-xs text-gray-400">
+          Privileged contest interventions require explicit administrator approval before execution.
+        </p>
+
+        {recommendations.filter(r => r.status === 'pending').length === 0 ? (
+          <div className="bg-zinc-950 p-6 rounded-xl text-center text-gray-400 text-sm border border-zinc-800">
+            No pending recommendations. Run Contest Analysis above to generate telemetry-driven recommendations.
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 gap-4">
+            {recommendations.filter(r => r.status === 'pending').map((rec: any) => (
+              <div key={rec.recommendationId} className="bg-zinc-950 border border-zinc-800 rounded-xl p-5 space-y-3">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <span className={`px-2.5 py-1 rounded text-xs font-bold uppercase tracking-wider ${
+                      rec.severity === 'critical' || rec.severity === 'high'
+                        ? 'bg-red-500/20 text-red-400 border border-red-500/40'
+                        : 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/40'
+                    }`}>
+                      {rec.severity} Severity
+                    </span>
+                    <span className="text-xs bg-indigo-500/20 text-indigo-300 px-2 py-0.5 rounded font-mono">
+                      {rec.type}
+                    </span>
+                  </div>
+                  <span className="text-xs text-gray-500 font-mono">
+                    ID: {rec.recommendationId}
+                  </span>
+                </div>
+
+                <div>
+                  <h4 className="text-sm font-bold text-white mb-1">AI Reasoning Summary:</h4>
+                  <p className="text-sm text-gray-300">{rec.reasoningSummary}</p>
+                </div>
+
+                <div className="bg-zinc-900 p-3 rounded-lg border border-zinc-800 text-sm text-indigo-200">
+                  <strong>Recommended Action:</strong> {rec.recommendation}
+                  {rec.suggestedAction?.hintText && (
+                    <div className="mt-2 text-xs text-green-300 font-mono bg-black/40 p-2 rounded">
+                      💡 Hint Payload: "{rec.suggestedAction.hintText}"
+                    </div>
+                  )}
+                </div>
+
+                <div className="flex items-center justify-end gap-3 pt-2">
+                  <button
+                    onClick={() => handleReject(rec.recommendationId)}
+                    disabled={adminActionLoading}
+                    className="px-4 py-2 bg-zinc-800 hover:bg-zinc-700 text-gray-300 font-semibold text-xs rounded-lg transition disabled:opacity-50 cursor-pointer"
+                  >
+                    Dismiss / Reject
+                  </button>
+                  <button
+                    onClick={() => handleApprove(rec.recommendationId)}
+                    disabled={adminActionLoading}
+                    className="px-4 py-2 bg-green-600 hover:bg-green-500 text-white font-bold text-xs rounded-lg transition shadow disabled:opacity-50 cursor-pointer"
+                  >
+                    ✅ Approve & Execute
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
+
+      {/* 3. Recent Debugging Agent Sessions */}
+      <section className="bg-zinc-900 border border-zinc-800 rounded-2xl p-6 shadow-xl space-y-4">
+        <h2 className="text-2xl font-bold text-white flex items-center gap-2">
+          <span>🔬</span> Recent Autonomous Debugging Sessions
+        </h2>
+
+        {agentSessions.length === 0 ? (
+          <div className="bg-zinc-950 p-6 rounded-xl text-center text-gray-400 text-sm border border-zinc-800">
+            No debugging sessions recorded yet.
+          </div>
+        ) : (
+          <div className="overflow-x-auto rounded-xl border border-zinc-800">
+            <table className="w-full text-xs text-left text-gray-300">
+              <thead className="bg-zinc-950 text-gray-400 uppercase font-semibold border-b border-zinc-800">
+                <tr>
+                  <th className="px-4 py-3">Time</th>
+                  <th className="px-4 py-3">User ID</th>
+                  <th className="px-4 py-3">Problem</th>
+                  <th className="px-4 py-3 text-center">Iterations</th>
+                  <th className="px-4 py-3">Status</th>
+                  <th className="px-4 py-3">Root Cause Diagnosis</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-zinc-800/60 bg-zinc-950/50">
+                {agentSessions.map((sess: any) => (
+                  <tr key={sess.sessionId} className="hover:bg-zinc-900/40 transition">
+                    <td className="px-4 py-3 whitespace-nowrap text-gray-400">
+                      {new Date(sess.createdAt).toLocaleTimeString()}
+                    </td>
+                    <td className="px-4 py-3 font-mono">{sess.userId}</td>
+                    <td className="px-4 py-3 font-semibold text-white">{sess.problemId || "N/A"}</td>
+                    <td className="px-4 py-3 text-center font-bold text-indigo-400">
+                      {sess.iterations || 1}
+                    </td>
+                    <td className="px-4 py-3">
+                      <span className="px-2 py-0.5 bg-green-500/20 text-green-300 rounded font-semibold text-[10px]">
+                        {sess.status}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-gray-300 max-w-xs truncate">
+                      {sess.finalDiagnosis?.rootCause || sess.finalDiagnosis?.diagnosis || "Diagnosed"}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
+
+      {/* 4. Agent Audit Logs Trail */}
+      <section className="bg-zinc-900 border border-zinc-800 rounded-2xl p-6 shadow-xl space-y-4">
+        <h2 className="text-2xl font-bold text-white flex items-center gap-2">
+          <span>📜</span> Agent Audit Trail
+        </h2>
+
+        {auditLogs.length === 0 ? (
+          <div className="bg-zinc-950 p-6 rounded-xl text-center text-gray-400 text-sm border border-zinc-800">
+            No audit logs yet.
+          </div>
+        ) : (
+          <div className="overflow-x-auto rounded-xl border border-zinc-800">
+            <table className="w-full text-xs text-left text-gray-300">
+              <thead className="bg-zinc-950 text-gray-400 uppercase font-semibold border-b border-zinc-800">
+                <tr>
+                  <th className="px-4 py-3">Timestamp</th>
+                  <th className="px-4 py-3">Agent</th>
+                  <th className="px-4 py-3">Action</th>
+                  <th className="px-4 py-3">Actor</th>
+                  <th className="px-4 py-3">Target</th>
+                  <th className="px-4 py-3">Details</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-zinc-800/60 bg-zinc-950/50 font-mono">
+                {auditLogs.map((log: any) => (
+                  <tr key={log.auditId} className="hover:bg-zinc-900/40 transition">
+                    <td className="px-4 py-3 whitespace-nowrap text-gray-400 font-sans">
+                      {new Date(log.timestamp).toLocaleString()}
+                    </td>
+                    <td className="px-4 py-3 text-indigo-400 font-bold font-sans">{log.agentType}</td>
+                    <td className="px-4 py-3 text-amber-300">{log.action}</td>
+                    <td className="px-4 py-3 text-gray-300">{log.actorId} ({log.actorType})</td>
+                    <td className="px-4 py-3 text-gray-400">{log.targetId}</td>
+                    <td className="px-4 py-3 text-gray-300 max-w-xs truncate font-sans">
+                      {JSON.stringify(log.metadata)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
+    </div>
+  );
+
   return (
     <div className="min-h-screen bg-black text-white p-10">
       <h1 className="text-4xl font-bold mb-8 text-center text-white">🛠 Admin Dashboard</h1>
@@ -935,8 +1259,8 @@ export default function AdminPage() {
         </button>
       </div>
 
-      {/* View tabs */}
-      <div className="flex justify-center gap-6 mb-8">
+      {/* View tabs & Logout */}
+      <div className="flex justify-center gap-4 mb-8 flex-wrap">
         <button
           onClick={() => setView("users")}
           className={`px-4 py-2 rounded ${view === "users" ? "bg-indigo-600" : "bg-zinc-800"}`}
@@ -955,6 +1279,21 @@ export default function AdminPage() {
         >
           Contests
         </button>
+        <button
+          onClick={() => {
+            setView("agents");
+            fetchAgentData();
+          }}
+          className={`px-4 py-2 rounded flex items-center gap-1.5 ${view === "agents" ? "bg-purple-600" : "bg-zinc-800"}`}
+        >
+          <span>🤖</span> AI Control Center
+        </button>
+        <button
+          onClick={() => auth?.logout()}
+          className="px-4 py-2 rounded bg-red-600 hover:bg-red-700 font-bold transition cursor-pointer"
+        >
+          Logout
+        </button>
       </div>
 
       {/* Error message */}
@@ -965,7 +1304,9 @@ export default function AdminPage() {
         ? renderUserSection()
         : view === "problems"
           ? renderProblemSection()
-          : renderContestSection()}
+          : view === "contests"
+            ? renderContestSection()
+            : renderAgentControlCenter()}
     </div>
   );
 }

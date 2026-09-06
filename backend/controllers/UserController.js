@@ -65,10 +65,9 @@ export const logoutUser = (req, res) => {
 // PARTIAL UPDATE USER BY CUSTOM ID (PATCH)
 export const partialUpdateUser = async (req, res) => {
   try {
-    // Find user by custom ID and update only the fields provided in req.body
     const updated = await User.findOneAndUpdate(
       { id: req.params.id },
-      { $set: req.body },    // Use $set to only update specified fields
+      { $set: req.body },   
       { new: true }
     );
 

@@ -18,7 +18,6 @@ export const getSubmissions = async (req, res) => {
     if (req.query.user) filter.user = req.query.user;
     if (req.query.problem) filter.problem = req.query.problem;
 
-    // Populate both user and problem fields properly
     const submissions = await Submission.find(filter)
       .populate(['user', 'problem']);
       

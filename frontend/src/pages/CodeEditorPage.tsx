@@ -14,6 +14,8 @@ import ContestRegisterPage from "./ContestPage";
 import SubmissionsPage from "./SubmissionsPage";
 import { submitCode, runCode } from "../api/compiler";
 import { useContestSession } from "../api/CreateSessionContext";
+import DebuggingModal from "../components/DebuggingModal";
+import { startDebugSession } from "../api/agents";
 
 import {
   fetchAiAssistanceEnabled,
@@ -195,6 +197,7 @@ export default function CodeEditorPage() {
     if (filteredProblems.length === 0) {
       setSelectedIndex(null);
       setOGCode("");
+      setOGCode("");
       setCode("");
       setSimilarityScore(0);
       setIsSubmitDisabled(true);
@@ -218,8 +221,10 @@ export default function CodeEditorPage() {
       setCodeInitialized(true);
       setAiHint("");
       setFiascode(firstProblemCode.trim() !== "");
+      setFiascode(firstProblemCode.trim() !== "");
     }
   }, [filteredProblems, codeInitialized]);
+
 
 
   // Similarity / submit enabled logic
@@ -267,15 +272,19 @@ export default function CodeEditorPage() {
       alert("Submission not allowed: code must not contain 'raise' or 'throw' keywords.");
       return;
     }
+    if (/\braise\b/i.test(code) || /\bthrow\b/i.test(code)) {
+      alert("Submission not allowed: code must not contain 'raise' or 'throw' keywords.");
+      return;
+    }
     const prob = filteredProblems[selectedIndex];
     const langMap = { py: "py", python: "py", java: "java", cpp: "cpp", "c++": "cpp" };
     const lang = langMap[language.toLowerCase()] || "py";
 
     try {
       const response = await submitCode(lang, code, prob.id, userId, userContestId, userName, input);
-      setOutput(response.output || response.error || "Unknown error");
-    } catch (error) {
-      setOutput("Submission failed.");
+      setOutput(response?.output || response?.error || response?.detail || "Submission completed with no output.");
+    } catch (error: any) {
+      setOutput("Submission failed: " + (error?.message || error || ""));
       console.error(error);
     }
   };
@@ -290,9 +299,9 @@ export default function CodeEditorPage() {
     const lang = langMap[language.toLowerCase()] || "py";
     try {
       const response = await runCode(lang, code, input);
-      setOutput(response.output || response.error || "Unknown error");
-    } catch (error) {
-      setOutput("Run failed." + (error.message || error.toString()));
+      setOutput(response?.output || response?.error || response?.detail || "Run completed with no output.");
+    } catch (error: any) {
+      setOutput("Run failed: " + (error?.message || error || ""));
       console.error(error);
     }
   };
@@ -314,6 +323,40 @@ export default function CodeEditorPage() {
     }
   }
 
+  const [debugModalOpen, setDebugModalOpen] = useState(false);
+  const [debugLoading, setDebugLoading] = useState(false);
+  const [debugError, setDebugError] = useState<string | null>(null);
+  const [diagnosisData, setDiagnosisData] = useState<any>(null);
+
+  const handleDebugCurrentCode = async () => {
+    if (selectedIndex === null) {
+      alert("Please select a problem first.");
+      return;
+    }
+    const prob = filteredProblems[selectedIndex];
+    const langMap = { py: "py", python: "py", java: "java", cpp: "cpp", "c++": "cpp" };
+    const lang = langMap[language.toLowerCase()] || "py";
+
+    setDebugModalOpen(true);
+    setDebugLoading(true);
+    setDebugError(null);
+    setDiagnosisData(null);
+
+    try {
+      const result = await startDebugSession({
+        problemId: prob.id,
+        sourceCode: code,
+        language: lang,
+        verdict: output || "Failed",
+      });
+      setDiagnosisData(result);
+    } catch (err: any) {
+      setDebugError(err.message || "Failed to start autonomous debugging agent.");
+    } finally {
+      setDebugLoading(false);
+    }
+  };
+
   if (showLeaderboard) {
     return (
       <LeaderboardPage contestId={userContestId || ""} contests={contests} />
@@ -330,6 +373,10 @@ export default function CodeEditorPage() {
         userId={userId}
         problems={problems}
         onBack={() => setSubmissions(false)}
+        onApplyFix={(newCode) => {
+          setCode(newCode);
+          setSubmissions(false);
+        }}
       />
     );
   }
@@ -457,9 +504,19 @@ export default function CodeEditorPage() {
           <InputBox input={input} setInput={setInput} className="flex-1 w-full" />
         </div>
 
-        {/* Output Console */}
-        <div className="mb-6 w-full max-h-64 overflow-auto rounded bg-zinc-900 text-sm font-mono text-white">
-          <OutputConsole output={output} />
+        {/* Output Console & AI Debug Action */}
+        <div className="mb-6 w-full space-y-2">
+          <div className="max-h-64 overflow-auto rounded bg-zinc-900 text-sm font-mono text-white">
+            <OutputConsole output={output} />
+          </div>
+          {output && (output.toLowerCase().includes('error') || output.toLowerCase().includes('wrong') || output.toLowerCase().includes('fail')) && (
+            <button
+              onClick={handleDebugCurrentCode}
+              className="w-full py-2 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-bold rounded-lg text-xs transition shadow flex items-center justify-center gap-2 cursor-pointer"
+            >
+              <span>🤖</span> Debug Failure with AI Agent
+            </button>
+          )}
         </div>
       </div>
 
@@ -483,8 +540,17 @@ export default function CodeEditorPage() {
         )}
 
       </div>
+
+      {/* Interactive Debugging Modal */}
+      <DebuggingModal
+        isOpen={debugModalOpen}
+        onClose={() => setDebugModalOpen(false)}
+        loading={debugLoading}
+        error={debugError}
+        diagnosisData={diagnosisData}
+        originalCode={code}
+        onApplyFix={(newCode) => setCode(newCode)}
+      />
     </div>
   );
-
-
 }

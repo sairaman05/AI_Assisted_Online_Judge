@@ -1,5 +1,5 @@
 import React, { useContext } from "react";
-import { AuthContext } from "../api/authuser"; // adjust path as needed
+import { AuthContext } from "../api/authuser";
 import { Navigate } from "react-router-dom";
 
 export function RequireAuth({ children, allowedTypes }) {

@@ -1,4 +1,4 @@
-const CONTEST_API_BASE = "http://localhost:5174/api/contests";
+const CONTEST_API_BASE = `${import.meta.env.VITE_BACKEND_IP}/api/contests`;
 
 export function addContest(contestData) {
   return fetch(CONTEST_API_BASE, {
@@ -135,4 +135,21 @@ export async function addProblemToContest(contestId, problemId) {
     console.error("Error adding problem to contest:", err);
     throw err;
   }
+}
+
+export function validateContestPassword(contestId, password) {
+  return fetch(`${CONTEST_API_BASE}/validate-password`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    credentials: "include",
+    body: JSON.stringify({ contestId, password }),
+  })
+    .then((res) => {
+      if (!res.ok) throw new Error("Password validation failed");
+      return res.json();
+    })
+    .catch((err) => {
+      console.error("Error validating contest password:", err);
+      throw err;
+    });
 }

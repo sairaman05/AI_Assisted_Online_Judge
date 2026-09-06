@@ -1,20 +1,19 @@
-// leaderboard.ts
 
 export interface Submission {
   user: string;
   username: string;
   problem: string;
-  result: string; // "Accepted" or others
+  result: string; 
   score: number;
-  submittedAt: string; // ISO string
-  contestId?: string; // optionally present in submissions
+  submittedAt: string; 
+  contestId?: string; 
 }
 
 export interface LeaderboardEntry {
   user: string;
   username: string;
   totalScore: number;
-  avgTimePercentile: number; // 0 to 100, higher is better
+  avgTimePercentile: number; 
 }
 
 export interface Contest {
@@ -26,17 +25,13 @@ export function calculateLeaderboard(
   submissions: Submission[],
   contestProblemIds: string[]
 ): LeaderboardEntry[] {
-  // Filter submissions to those for problems in contest
   const filteredSubs = submissions.filter((sub) =>
     contestProblemIds.includes(sub.problem)
   );
 
-  // Map: user -> problem -> earliest accepted submission
   const userProblemMap: Record<string, Record<string, Submission>> = {};
-  // Map: problem -> list of accepted submissions for percentile calculation
   const problemSubmissionsMap: Record<string, Submission[]> = {};
 
-  // Track earliest accepted submission for each user & problem
   for (const sub of filteredSubs) {
     if (sub.result !== "Accepted") continue;
 
@@ -77,12 +72,10 @@ export function calculateLeaderboard(
         percentile = ((sortedTimes.length - rank - 1) / (sortedTimes.length - 1)) * 100;
       }
 
-      // Store percentile rounded to 2 decimals
       problemTimePercentiles[problem][sub.user] = parseFloat(percentile.toFixed(2));
     }
   }
 
-  // Build leaderboard entries per user
   const leaderboard: LeaderboardEntry[] = [];
 
   for (const user in userProblemMap) {
@@ -128,7 +121,6 @@ export function calculateLeaderboards(
   const leaderboards: Record<string, LeaderboardEntry[]> = {};
 
   for (const contest of contests) {
-    // Defensive - ensure problems array present
     if (!Array.isArray(contest.problems)) {
       leaderboards[contest.id] = [];
       continue;

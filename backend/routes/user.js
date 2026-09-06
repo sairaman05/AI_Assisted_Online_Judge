@@ -1,19 +1,13 @@
 import express from 'express';
 import * as UserController from '../controllers/UserController.js';
 
-
 const router = express.Router();
 
-router.post('/', UserController.createUser); //create user
-
-router.get('/', UserController.getUsers); //get user
-
-router.get('/:id', UserController.getUserById); //get by user id
-
-router.put('/:id', UserController.updateUser); //update user
-
-router.delete('/:id', UserController.deleteUser); // delete user
-
-router.patch('/:id', UserController.partialUpdateUser); // partial update, e.g., updating contest field only
+router.post('/', UserController.createUser); 
+router.get('/', UserController.getUsers); 
+router.get('/:id', UserController.getUserById); 
+router.put('/:id', UserController.updateUser); 
+router.delete('/:id', UserController.deleteUser);
+router.patch('/:id', UserController.partialUpdateUser);
 
 export default router;

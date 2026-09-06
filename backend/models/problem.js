@@ -4,15 +4,15 @@ const problemSchema = new mongoose.Schema({
   id: { type: String, required: true },
   title: { type: String, required: true },
   description: { type: String, required: true },
-  score: { type: Number, required: true },
-  codeBase: { type: String, required: true },
+  score: { type: Number, required: true, default: 0 },
+  codeBase: { type: String, required: false, default: '' },
   testcases: [
     {
-      input: { type: String },
-      output: { type: String, required: true }
+      input: { type: String, default: '' },
+      output: { type: String, required: false, default: '' }
     }
   ],
-  constraintLimit: { type: Number, required: true },
+  constraintLimit: { type: Number, required: false, default: 0 },
 }, { timestamps: true });
 
 export default mongoose.model('Problem', problemSchema);

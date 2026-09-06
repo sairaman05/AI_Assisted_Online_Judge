@@ -12,5 +12,6 @@ router.post('/register', contestController.registerUserForContest);
 router.post('/unregister', contestController.unregisterUserFromContest);
 router.post('/addProblem', contestController.addProblemToContest);
 router.post('/removeProblem', contestController.removeProblemFromContest);
+router.post('/validate-password', contestController.validateContestPassword);
 
 export default router;

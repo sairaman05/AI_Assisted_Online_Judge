@@ -5,6 +5,8 @@ import userRoutes from './user.js';
 import authRoutes from './auth.js';
 import contestRoutes from './contest.js';
 import aiAssistanceRoutes from './ai.js';
+import compilerRoutes from './compiler.js';
+import agentRoutes from './agents.js';
 
 const router = express.Router();
 
@@ -14,5 +16,7 @@ router.use('/users', userRoutes);
 router.use('/auth', authRoutes);
 router.use('/contests', contestRoutes);
 router.use('/ai', aiAssistanceRoutes);
+router.use('/compiler', compilerRoutes);
+router.use('/agents', agentRoutes);
 
 export default router;

@@ -1,4 +1,5 @@
-const API_BASE = "http://localhost:5174/api/submissions";
+
+const API_BASE = `${import.meta.env.VITE_BACKEND_IP}/api/submissions`;
 
 // Create a new submission
 export function addSubmission(submissionData) {

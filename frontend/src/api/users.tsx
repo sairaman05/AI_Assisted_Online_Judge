@@ -1,4 +1,5 @@
-const API_BASE = "http://localhost:5174/api/users";
+
+const API_BASE = `${import.meta.env.VITE_BACKEND_IP}/api/users`;
 
 // CREATE a new user
 export function addUser(userData) {
