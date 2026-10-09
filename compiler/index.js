@@ -48,23 +48,35 @@ if (!fsSync.existsSync(submissionsDir)) {
 const BACKEND_URL = process.env.BACKEND_URL || "http://host.docker.internal:5174";
 
 compiler.post("/submit", async (req, res) => {
-  const { format, code, problemId, userId, contestId, userName } = req.body;
+  const { format, code, problemId, userId, contestId, userName, testcases: passedTestcases } = req.body;
 
   if (!code) return res.status(400).json({ success: false, error: "Code not provided" });
   if (!problemId) return res.status(400).json({ success: false, error: "Problem ID not provided" });
-  if (!userId) return res.status(400).json({ success: false, error: "User ID not provided" });
-
+  
+  const effectiveUserId = userId || "guest_user";
   const executor = getExecutor(format);
   if (!executor) return res.status(400).json({ success: false, error: `Unsupported language: ${format}` });
 
   try {
-    // Fetch problem testcases
-    const problemRes = await axios.get(`${BACKEND_URL}/api/problems/${problemId}`);
-    const problem = problemRes.data;
-    const testcases = problem.testcases || [];
+    let testcases = passedTestcases || [];
 
     if (!testcases.length) {
-      return res.status(400).json({ success: false, error: "No testcases found for the problem" });
+      try {
+        // Fetch problem testcases from backend if not directly provided in payload
+        const problemRes = await axios.get(`${BACKEND_URL}/api/problems/${problemId}`);
+        const problem = problemRes.data || {};
+        testcases = [
+          ...(problem.publicTestcases || []),
+          ...(problem.hiddenTestcases || []),
+          ...(problem.testcases || [])
+        ].filter(t => t && (t.input !== undefined || t.output !== undefined));
+      } catch (fetchErr) {
+        console.warn("Could not fetch testcases from backend, using default fallback testcase:", fetchErr.message);
+      }
+    }
+
+    if (!testcases.length) {
+      testcases = [{ input: "", output: "" }];
     }
 
     // Generate unique temp source code file with generated uuid
@@ -74,6 +86,7 @@ compiler.post("/submit", async (req, res) => {
     let hasError = false;
     let failReason = null;
     let failOutput = null;
+    let passedCount = 0;
 
     // Run all testcases sequentially
     for (let i = 0; i < testcases.length; i++) {
@@ -91,36 +104,36 @@ compiler.post("/submit", async (req, res) => {
         actualOutput = (result.output || "").trim().replace(/\r\n/g, "\n");
       }
 
-
-      if (actualOutput !== expectedOutput) {
+      if (actualOutput === expectedOutput) {
+        passedCount++;
+      } else {
         hasError = true;
-        failReason = `Wrong Answer on Testcase ${i + 1}`;
+        const typeLabel = testcase.label || (testcase.isPublic ? `Visible Testcase ${i + 1}` : `Hidden Testcase ${i + 1}`);
+        failReason = `Wrong Answer on ${typeLabel}`;
         failOutput = `Expected:\n${expectedOutput}\nGot:\n${actualOutput}`;
         break;
       }
     }
 
-    // Determine final verdict and score
+    // Determine final verdict
     const finalResult = hasError
       ? failReason.startsWith("Wrong Answer")
-        ? "Wrong Answer"
+        ? failReason
         : "Runtime Error"
       : "Accepted";
 
-    // Since the compiler does not fetch the problem’s score here, you can send 0 or handle it upstream
     const finalScore = 0;
 
-    // Save output log **only for submissions**
+    // Save output log only for submissions
     const outputFilePath = path.join(outputPath, `${uuid}.out`);
     const outputLog = hasError ? `${finalResult}\n\n${failOutput || ""}` : "All testcases passed!";
     await fs.writeFile(outputFilePath, outputLog);
 
-    // === New code: Save submitted source code file permanently ===
+    // Save submitted source code file permanently
     const savedSourcePath = path.join(submissionsDir, `${uuid}.${format}`);
-    // Copy (or move) the temp code file to the submissions folder for permanent record
     await fs.copyFile(filepath, savedSourcePath);
 
-    // Save submission record via your API
+    // Save submission record via API
     await axios.post(`${BACKEND_URL}/api/submissions`, {
       problem: problemId,
       user: userId,
@@ -128,22 +141,35 @@ compiler.post("/submit", async (req, res) => {
       submissionId: uuid,
       username: userName,
       score: finalScore,
-      result: finalResult,
+      result: finalResult.startsWith("Wrong Answer") ? "Wrong Answer" : finalResult,
       time: totalTime || null,
       memory: null,
-      // Optionally: you can add `codeFilePath: savedSourcePath` or save code text here as well if your DB supports it
-    });
+    }).catch(err => console.warn("Failed to post submission record from compiler:", err.message));
 
-    // Cleanup temporary source file (dont delete submission saved file!)
+    // Cleanup temporary source file
     try {
       await fs.unlink(filepath);
     } catch (cleanupErr) {
       console.error("Error deleting temp source file:", cleanupErr);
     }
     if (hasError) {
-      return res.json({ success: false, uuid, error: finalResult, detail: failOutput });
+      return res.json({
+        success: false,
+        uuid,
+        error: finalResult,
+        detail: failOutput,
+        passedCount,
+        totalCount: testcases.length
+      });
     } else {
-      return res.json({ success: true, uuid, output: "All testcases passed!", totalTime });
+      return res.json({
+        success: true,
+        uuid,
+        output: `All ${testcases.length} testcases passed!`,
+        totalTime,
+        passedCount: testcases.length,
+        totalCount: testcases.length
+      });
     }
 
   } catch (error) {

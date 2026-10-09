@@ -2,6 +2,12 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import HomePage from "./pages/Homepage";
 import AdminPage from "./pages/AdminPage";
 import EditorWrapper from "./components/CCWrapper";
+import ProblemsListPage from "./pages/ProblemsListPage";
+import ProfilePage from "./pages/ProfilePage";
+import ContestsListPage from "./pages/ContestsListPage";
+import DashboardPage from "./pages/DashboardPage";
+import InterviewPrepPage from "./pages/InterviewPrepPage";
+import ContestReportPage from "./pages/ContestReportPage";
 import { RequireAuth } from "./components/RequireAuth";
 import { AuthProvider } from "./api/authuser";
 import { useEffect } from "react";
@@ -22,36 +28,52 @@ function useKeepAlivePing() {
 function App() {
   useKeepAlivePing();
   return (
-    
     <BrowserRouter>
       <AuthProvider>
         <ContestSessionProvider>
-        <Routes>
-          {/* Public Route */}
-          <Route path="/" element={<HomePage />} />
+          <Routes>
+            {/* Public Landing Route */}
+            <Route path="/" element={<HomePage />} />
 
-          {/* Admin Protected Route */}
-          <Route
-            path="/admin"
-            element={
-              <RequireAuth allowedTypes={["admin"]}>
-                <AdminPage />
-              </RequireAuth>
-            }
-          />
+            {/* User Account Dashboard */}
+            <Route path="/dashboard" element={<DashboardPage />} />
 
-          {/* User and Admin Protected Route */}
-          <Route
-            path="/editor"
-            element={
-              <RequireAuth allowedTypes={["user", "admin"]}>
-                
+            {/* LeetCode Practice Problems List */}
+            <Route path="/problems" element={<ProblemsListPage />} />
+
+            {/* Contests Hub */}
+            <Route path="/contests" element={<ContestsListPage />} />
+
+            {/* Contest Performance & Weakness Analysis Report */}
+            <Route path="/contests/:contestId/report" element={<ContestReportPage />} />
+
+            {/* Interview Preparation Suite with JD Upload & PDF Export */}
+            <Route path="/interview-prep" element={<InterviewPrepPage />} />
+
+            {/* User Profile Dashboard */}
+            <Route path="/profile" element={<ProfilePage />} />
+
+            {/* Admin Protected Route */}
+            <Route
+              path="/admin"
+              element={
+                <RequireAuth allowedTypes={["admin"]}>
+                  <AdminPage />
+                </RequireAuth>
+              }
+            />
+
+            {/* Code Editor Practice / Contest Workspace */}
+            <Route
+              path="/editor"
+              element={
+                <RequireAuth allowedTypes={["user", "admin"]}>
                   <EditorWrapper />
-              </RequireAuth>
-            }
-          />
-        </Routes>
-      </ContestSessionProvider>
+                </RequireAuth>
+              }
+            />
+          </Routes>
+        </ContestSessionProvider>
       </AuthProvider>
     </BrowserRouter>
   );

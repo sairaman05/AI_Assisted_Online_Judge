@@ -27,7 +27,7 @@ export async function submitCode( lang, code, problemId, userId, contestId, user
 }
 
 // Run code without submission (for instant feedback or code execution)
-export async function runCode( lang, code, input = "" ) {
+export async function runCode( lang, code, input = "", problemId = "" ) {
   return fetch(`${COMPILER_API_BASE}/run`, {
     method: "POST",
     headers: {
@@ -38,6 +38,7 @@ export async function runCode( lang, code, input = "" ) {
       format: lang,
       code: code,
       input: input,          // optional input string for the code running
+      problemId: problemId,  // problemId for fetching visible testcases
     }),
   })
     .then((res) => res.json())

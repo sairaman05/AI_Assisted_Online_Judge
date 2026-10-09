@@ -1,6 +1,6 @@
-const { spawn } = require('child_process');
-const path = require('path');
-const { performance } = require('perf_hooks');
+import { spawn } from 'child_process';
+import path from 'path';
+import { performance } from 'perf_hooks';
 
 
 function parseJavaCompileError(errorOutput) {
@@ -188,4 +188,4 @@ const executeJava = (filepath, input = '', timeoutMs = 5000) => {
 };
 
 
-module.exports = { executeJava };
+export { executeJava };

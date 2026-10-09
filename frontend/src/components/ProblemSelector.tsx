@@ -20,14 +20,14 @@ export default function ProblemSelector({
 
   const handleSelect = (index) => {
     const selProb = problems[index];
-    let baseCode = selProb.codeBase && selProb.codeBase.trim() !== ""
+    const defaultPy = `# Write your Python solution here\nimport sys\n\ndef solve():\n    input_data = sys.stdin.read().split()\n    if not input_data:\n        return\n    # Implement solution here\n    pass\n\nif __name__ == "__main__":\n    solve()\n`;
+    let baseCode = selProb?.codeBase && selProb.codeBase.trim() !== "" && !selProb.codeBase.startsWith("<") && (selProb.codeBase.includes("def ") || selProb.codeBase.includes("#"))
       ? selProb.codeBase
-      : ""; // empty if no codeBase
+      : defaultPy;
 
     // Override with boilerplate if fiascode is false (means no original codeBase)
     if (fiascode === false) {
-      // Here, default to Python boilerplate, extend as needed per problem language if available
-      baseCode = languageBoilerplates["py"];
+      baseCode = defaultPy;
     }
 
     setSelectedIndex(index);

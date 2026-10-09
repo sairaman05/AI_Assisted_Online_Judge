@@ -20,15 +20,15 @@ export default function ContestRegisterPage() {
 
 
   const { user } = useContext(AuthContext);
-  const userId = user.sub;
+  const userId = user?.sub || user?.id || user?.email || "guest_user";
 
   useEffect(() => {
     async function fetchContests() {
       try {
         const contestsData = await readContests();
-        setContests(contestsData);
+        setContests(Array.isArray(contestsData) ? contestsData : []);
 
-        const registeredIds = contestsData
+        const registeredIds = (Array.isArray(contestsData) ? contestsData : [])
           .filter((c) => c.participants?.includes(userId))
           .map((c) => c.id || c._id);
 
@@ -130,8 +130,7 @@ export default function ContestRegisterPage() {
 
 
   return (
-    <RequireAuth allowedTypes={[]}>
-      <div className="min-h-screen bg-gradient-to-br from-[#1e202f] to-[rgb(44,45,64)] p-4 md:p-8 text-white font-sans flex flex-col">
+    <div className="min-h-screen bg-gradient-to-br from-[#1e202f] to-[rgb(44,45,64)] p-4 md:p-8 text-white font-sans flex flex-col">
         <div className="w-[95%] flex justify-start mb-4 ml-[2%]">
           {userContests.length > 0 && (
             <button
@@ -281,6 +280,5 @@ export default function ContestRegisterPage() {
           </div>
         )}
       </div>
-    </RequireAuth>
   );
 }

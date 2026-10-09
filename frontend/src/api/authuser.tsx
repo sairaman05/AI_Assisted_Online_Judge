@@ -101,7 +101,7 @@ export function useAuthHandler() {
       if (data.user.type === "admin") {
         navigate("/admin");
       } else {
-        navigate("/editor");
+        navigate("/problems");
       }
     } catch (err: any) {
       setError(err.message || "Login failed");
@@ -139,7 +139,7 @@ export function useAuthHandler() {
       if (data.user.type === "admin") {
         navigate("/admin");
       } else {
-        navigate("/editor");
+        navigate("/problems");
       }
     } catch (err: any) {
       setError(err.message || "Registration failed");

@@ -153,3 +153,61 @@ export function validateContestPassword(contestId, password) {
       throw err;
     });
 }
+
+export function generateAIContest(data: any) {
+  return fetch(`${CONTEST_API_BASE}/generate-ai-contest`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    credentials: "include",
+    body: JSON.stringify(data),
+  })
+    .then((res) => {
+      if (!res.ok) return res.json().then(e => { throw new Error(e.error || "Failed to generate AI contest"); });
+      return res.json();
+    });
+}
+
+export function regenerateContestProblem(data: any) {
+  return fetch(`${CONTEST_API_BASE}/regenerate-problem`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    credentials: "include",
+    body: JSON.stringify(data),
+  })
+    .then((res) => {
+      if (!res.ok) return res.json().then(e => { throw new Error(e.error || "Failed to regenerate problem"); });
+      return res.json();
+    });
+}
+
+export function fetchControlCenterAnalytics(contestId: string, force = false) {
+  return fetch(`${CONTEST_API_BASE}/${contestId}/analytics?force=${force}`, { credentials: "include" })
+    .then((res) => {
+      if (!res.ok) throw new Error("Failed to fetch contest analytics");
+      return res.json();
+    });
+}
+
+export function publishContestGuidance(data: any) {
+  return fetch(`${CONTEST_API_BASE}/publish-guidance`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    credentials: "include",
+    body: JSON.stringify(data),
+  })
+    .then((res) => {
+      if (!res.ok) throw new Error("Failed to publish contest guidance");
+      return res.json();
+    });
+}
+
+export function fetchParticipantGuidance(contestId: string, userId: string, problemId: string) {
+  return fetch(`${CONTEST_API_BASE}/${contestId}/participant-guidance?userId=${encodeURIComponent(userId)}&problemId=${encodeURIComponent(problemId)}`, {
+    credentials: "include",
+  })
+    .then((res) => {
+      if (!res.ok) throw new Error("Failed to fetch participant guidance");
+      return res.json();
+    });
+}
+

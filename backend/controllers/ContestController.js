@@ -202,3 +202,68 @@ export const validateContestPassword = async (req, res) => {
     return res.status(500).json({ error: "Internal server error" });
   }
 };
+
+// GENERATE AI CONTEST
+export const generateAIContestController = async (req, res) => {
+  try {
+    const { generateFullAIContest } = await import('../services/aiContestService.js');
+    const result = await generateFullAIContest(req.body);
+    res.status(201).json(result);
+  } catch (error) {
+    console.error("AI Contest Generation Error:", error);
+    res.status(400).json({ error: error.message || "Failed to generate AI contest" });
+  }
+};
+
+// REGENERATE SINGLE CONTEST PROBLEM
+export const regenerateContestProblemController = async (req, res) => {
+  try {
+    const { regenerateProblemForContest } = await import('../services/aiContestService.js');
+    const result = await regenerateProblemForContest(req.body);
+    res.json(result);
+  } catch (error) {
+    console.error("Problem Regeneration Error:", error);
+    res.status(400).json({ error: error.message || "Failed to regenerate problem" });
+  }
+};
+
+// GET LIVE CONTEST ANALYTICS & RUN AI CONTROL CENTER ANALYSIS
+export const analyzeControlCenterController = async (req, res) => {
+  try {
+    const { runAIControlCenterAnalysis } = await import('../services/aiControlCenterService.js');
+    const contestId = req.params?.id || req.body?.contestId;
+    const forceRefresh = req.query?.force === 'true' || (req.body && req.body.forceRefresh === true);
+    const analytics = await runAIControlCenterAnalysis(contestId, forceRefresh);
+    res.json({ success: true, result: analytics });
+  } catch (error) {
+    console.error("AI Control Center Error:", error);
+    res.status(500).json({ error: error.message || "Failed to run AI Control Center analysis" });
+  }
+};
+
+// PUBLISH CONTEST GUIDANCE INTERVENTION
+export const publishContestGuidanceController = async (req, res) => {
+  try {
+    const { publishContestGuidance } = await import('../services/aiControlCenterService.js');
+    const { contestId, guidanceId, targetScope, minAttemptsThreshold } = req.body;
+    const updatedAnalytics = await publishContestGuidance({ contestId, guidanceId, targetScope, minAttemptsThreshold });
+    res.json({ success: true, analytics: updatedAnalytics });
+  } catch (error) {
+    console.error("Publish Guidance Error:", error);
+    res.status(400).json({ error: error.message || "Failed to publish contest guidance" });
+  }
+};
+
+// GET PARTICIPANT GUIDANCE (USER SIDE)
+export const getParticipantGuidanceController = async (req, res) => {
+  try {
+    const { getParticipantContestGuidance } = await import('../services/aiControlCenterService.js');
+    const { id: contestId } = req.params;
+    const { userId, problemId } = req.query;
+    const guidanceData = await getParticipantContestGuidance({ contestId, userId: userId || 'guest_user', problemId: problemId || '' });
+    res.json(guidanceData);
+  } catch (error) {
+    console.error("Participant Guidance Error:", error);
+    res.status(500).json({ error: error.message || "Failed to fetch participant guidance" });
+  }
+};

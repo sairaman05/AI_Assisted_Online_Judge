@@ -1,5 +1,5 @@
-
-const API_BASE = `${import.meta.env.VITE_BACKEND_IP}/api/problems`;
+const BACKEND_URL = import.meta.env.VITE_BACKEND_IP || "http://localhost:5174";
+const API_BASE = `${BACKEND_URL}/api/problems`;
 
 //Create a new problem
 export function addProblem(problemData) {
@@ -12,6 +12,21 @@ export function addProblem(problemData) {
         .then(async (res) => {
             const data = await res.json().catch(() => ({}));
             if (!res.ok) throw new Error(data.error || `Failed to add problem (${res.status})`);
+            return data;
+        });
+}
+
+// Import problem from LeetCode
+export function importLeetCodeProblem(urlOrSlug, customDifficulty) {
+    return fetch(`${API_BASE}/import-leetcode`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ urlOrSlug, customDifficulty }),
+    })
+        .then(async (res) => {
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok) throw new Error(data.error || `Failed to import problem from LeetCode (${res.status})`);
             return data;
         });
 }
@@ -69,3 +84,4 @@ export function deleteProblem(problemId) {
             console.error("Error deleting problem:", err);
         });
 }
+

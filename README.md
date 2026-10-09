@@ -392,6 +392,29 @@ All routes require active JWT authentication (`authenticateToken`). Admin routes
 
 ---
 
+## 📑 Full Stack Development — Project Report & Academic Documentation
+
+A comprehensive **25–30 Page Full Stack Development Project Report** adhering strictly to the university syllabus and academic format has been compiled:
+
+- **📄 Word Document Report**: [`FULL_STACK_DEVELOPMENT_PROJECT_REPORT.docx`](file:///d:/All%20Semesters/semester%207/FSD/Online_Judge/Online_Judge/FULL_STACK_DEVELOPMENT_PROJECT_REPORT.docx)
+- **📊 10-Paper Literature Survey**: Cites and compares 10 foundational contributions (*Le et al., Kurnia et al., Goues et al., Wu et al., Xia et al., Wasylkowski et al., Chen et al., Anthropic MCP, LangGraph, Caiza et al.*) with summary matrix.
+- **📐 Architecture Specification**: Decoupled multi-tier flow (*User ➔ LangGraph Agent Suite ➔ React 18 Frontend ➔ Express API Gateway ➔ MongoDB & Docker Compiler*).
+
+### 🖥️ 8 Core Platform UI Views (Captured from Running Platform)
+
+| # | View / Feature | Description | Artifact Reference |
+| :-: | :--- | :--- | :--- |
+| **1** | **Landing Page** | Platform hero section, navigation bar, quick stats, and feature cards | [`shot_1_landing_page.png`](file:///d:/All%20Semesters/semester%207/FSD/Online_Judge/Online_Judge/report_assets/shot_1_landing_page.png) |
+| **2** | **Problems Catalog** | Filterable algorithmic problem set with tags, difficulty pills, and solve rates | [`shot_2_problems_page.png`](file:///d:/All%20Semesters/semester%207/FSD/Online_Judge/Online_Judge/report_assets/shot_2_problems_page.png) |
+| **3** | **Compiler Workspace** | Dual-pane Monaco code editor with multi-language selector and run/submit controls | [`shot_3_compiler_page.png`](file:///d:/All%20Semesters/semester%207/FSD/Online_Judge/Online_Judge/report_assets/shot_3_compiler_page.png) |
+| **4** | **Profile Dashboard** | User statistics, submission history, streak tracker, and **AI Weakness Analysis** | [`shot_4_profile_page.png`](file:///d:/All%20Semesters/semester%207/FSD/Online_Judge/Online_Judge/report_assets/shot_4_profile_page.png) |
+| **5** | **Contests Hub** | Live and upcoming contest arena with time windows and registration | [`shot_5_contest_page.png`](file:///d:/All%20Semesters/semester%207/FSD/Online_Judge/Online_Judge/report_assets/shot_5_contest_page.png) |
+| **6** | **Admin Command Center** | System oversight, problem CRUD, and real-time AI Assistance master toggle | [`shot_6_admin_page.png`](file:///d:/All%20Semesters/semester%207/FSD/Online_Judge/Online_Judge/report_assets/shot_6_admin_page.png) |
+| **7** | **Contest Creation Form** | Administrative contest scheduler with duration, passkey, and AI problem generation | [`shot_7_contest_adding_page.png`](file:///d:/All%20Semesters/semester%207/FSD/Online_Judge/Online_Judge/report_assets/shot_7_contest_adding_page.png) |
+| **8** | **Final Performance Report** | Detailed score breakdown, testcase execution telemetry, and interview prep | [`shot_8_final_page.png`](file:///d:/All%20Semesters/semester%207/FSD/Online_Judge/Online_Judge/report_assets/shot_8_final_page.png) |
+
+---
+
 ## 🛡️ Security, Sandboxing & Guardrails
 
 1. **Dockerized Process Isolation**:
@@ -411,3 +434,4 @@ All routes require active JWT authentication (`authenticateToken`). Admin routes
 ## 📜 License
 
 This project is licensed under the [MIT License](LICENSE).
+

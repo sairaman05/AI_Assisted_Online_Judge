@@ -36,3 +36,39 @@ export async function generateAIHint(problemDescription, codeBase) {
   const data = await res.json();
   return data.hint || "";
 }
+
+// 2-Minute Proactive AI Monitor
+export async function fetchProactiveMonitor(payload) {
+  const res = await fetch(`${API_BASE}/proactive-monitor`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    credentials: "include",
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) throw new Error("Failed to fetch proactive monitoring guidance");
+  return await res.json();
+}
+
+// Wrong Submission Analysis & Hints
+export async function fetchWrongSubmissionAnalysis(payload) {
+  const res = await fetch(`${API_BASE}/analyze-wrong-submission`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    credentials: "include",
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) throw new Error("Failed to fetch wrong submission analysis");
+  return await res.json();
+}
+
+// Alternative Solutions & Learning View
+export async function fetchAlternativeSolutions(payload) {
+  const res = await fetch(`${API_BASE}/alternative-solutions`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    credentials: "include",
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) throw new Error("Failed to fetch alternative solutions");
+  return await res.json();
+}

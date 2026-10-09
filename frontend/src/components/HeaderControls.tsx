@@ -1,5 +1,6 @@
 import React, { useState, useContext } from "react";
 import { AuthContext } from "../api/authuser";
+import { useNavigate } from "react-router-dom";
 
 export default function HeaderControls({
   language,
@@ -10,9 +11,11 @@ export default function HeaderControls({
   fiascode,
   setShowLeaderboard,
   setShowContestRegister,
+  sidebarOpen,
   setSidebarOpen,
 }) {
   const auth = useContext(AuthContext);
+  const navigate = useNavigate();
   const [clickedButton, setClickedButton] = useState(null);
 
   const handleClickWithFeedback = (buttonKey, callback) => {
@@ -40,23 +43,32 @@ export default function HeaderControls({
 
   return (
     <div className="flex flex-wrap items-center justify-between gap-2 w-full">
-      {/* Problems toggle button */}
+      {/* All Problems List Link */}
+      <button
+        onClick={() => navigate("/problems")}
+        className="cursor-pointer py-2 px-3 bg-indigo-600 rounded text-white hover:bg-indigo-500 font-semibold text-xs transition"
+        title="Back to Problems List"
+      >
+        📚 All Problems
+      </button>
+
+      {/* Problems sidebar toggle button */}
       <button
         onClick={() =>
           handleClickWithFeedback("problems", () =>
             setSidebarOpen((prev) => !prev)
           )
         }
-        className="cursor-pointer flex-1 min-w-[15%] py-2 bg-indigo-700 rounded text-white hover:bg-indigo-800 focus:outline-none focus:ring-2 focus:ring-indigo-400"
+        className="cursor-pointer py-2 px-3 bg-gray-800 border border-gray-700 rounded text-gray-200 hover:bg-gray-700 text-xs"
       >
-        Problems
+        Select Problem
       </button>
 
       {/* Language selector */}
       <select
         value={language}
         onChange={handleLanguageChange}
-        className="cursor-pointer flex-1 min-w-[15%] py-2 rounded bg-gray-700 text-white focus:outline-none focus:ring-2 focus:ring-blue-600 text-center"
+        className="cursor-pointer py-2 px-2 rounded bg-gray-800 text-white text-xs border border-gray-700 focus:outline-none"
       >
         <option value="py">Python</option>
         <option value="java">Java</option>
@@ -71,20 +83,18 @@ export default function HeaderControls({
               navigator.clipboard.writeText(OGcode);
             })
           }
-          className="cursor-pointer flex-1 min-w-[15%] py-2 bg-green-600 rounded text-white hover:bg-green-800 focus:outline-none focus:ring-2 focus:ring-green-400"
+          className="cursor-pointer py-2 px-3 bg-emerald-600/80 rounded text-white hover:bg-emerald-600 text-xs"
         >
           Copy Code
         </button>
       )}
 
-      {/* Register for Contests button */}
+      {/* Contests button */}
       <button
-        onClick={() =>
-          handleClickWithFeedback("register", () => setShowContestRegister(true))
-        }
-        className="cursor-pointer flex-1 min-w-[20%] py-2 bg-teal-600 rounded text-white hover:bg-teal-700 focus:outline-none focus:ring-2 focus:ring-teal-400"
+        onClick={() => navigate("/contests")}
+        className="cursor-pointer py-2 px-3 bg-teal-600 rounded text-white hover:bg-teal-500 text-xs font-semibold"
       >
-        Register Contests 
+        Contests
       </button>
 
       {/* Leaderboard button */}
@@ -92,21 +102,10 @@ export default function HeaderControls({
         onClick={() =>
           handleClickWithFeedback("leaderboard", () => setShowLeaderboard(true))
         }
-        className="cursor-pointer flex-1 min-w-[15%] py-2 bg-green-600 rounded text-white hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-400"
+        className="cursor-pointer py-2 px-3 bg-indigo-700 rounded text-white hover:bg-indigo-600 text-xs font-semibold"
       >
         Leaderboard
       </button>
-
-      {/* Logout button */}
-      {auth?.isAuthenticated && (
-        <button
-          onClick={() => auth.logout()}
-          className="cursor-pointer py-2 px-3 bg-red-600 rounded text-white hover:bg-red-700 font-semibold transition"
-          title="Logout of active session"
-        >
-          Logout
-        </button>
-      )}
     </div>
   );
 }

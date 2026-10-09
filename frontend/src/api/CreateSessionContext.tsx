@@ -1,4 +1,4 @@
-import React, { createContext, useState, useEffect, useContext, ReactNode } from "react";
+import React, { createContext, useState, useEffect, useContext, type ReactNode } from "react";
 
 interface ContestSessionContextType {
   timeLeft: number | null;

@@ -1,8 +1,8 @@
-const { spawn } = require('child_process');
-const path = require('path');
-const { performance } = require('perf_hooks');
+import { spawn } from 'child_process';
+import path from 'path';
+import { performance } from 'perf_hooks';
 
-const outputPath = path.join(__dirname, 'outputs'); // for submit handler to save logs, not used here
+const outputPath = path.join(path.resolve(), 'outputs'); // for submit handler to save logs, not used here
 
 /**
  * Executes a Python script with optional input sent to stdin.
@@ -140,6 +140,6 @@ function parsePythonError(stderrData) {
   }
 }
 
-module.exports = {
+export {
   executePy,
 };

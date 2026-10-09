@@ -7,9 +7,13 @@ const contestSchema = new mongoose.Schema({
   start: { type: Date, required: true },
   end: { type: Date, required: true },
   problems: [{ type: String }],
-  participants: [{type: String}],
-  password: { type : String },
+  participants: [{ type: String }],
+  password: { type: String },
   duration: { type: Number },
+  aiGenerated: { type: Boolean, default: false },
+  aiHintsAllowed: { type: Boolean, default: true },
+  generationMetadata: { type: mongoose.Schema.Types.Mixed },
+  status: { type: String, enum: ['draft', 'published', 'active', 'ended'], default: 'published' }
 }, { timestamps: true });
 
 contestSchema.pre('save', async function (next) {
